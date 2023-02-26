@@ -7,6 +7,7 @@ from telebot import types
 from settings import BOT_TOKEN
 
 # libraries
+import win32api
 import rotatescreen
 import pathlib
 from help_functions import get_files_and_dirs_in_directories
@@ -50,9 +51,34 @@ def make_rotate(message):
 """Directories travel functions"""
 
 
+@bot.message_handler(commands=['change_disk'])
+def try_to_change_a_disk_in_travel_path(message):
+    drives = win32api.GetLogicalDriveStrings()
+    drives = drives.split('\000')[:-1]
+    if len(drives) < 2:
+        bot.send_message(message.chat.id, "This computer has no more than 1 disk")
+        return
+    text = 'Choose a disk(or use out to leave)\n' + '''\n'''.join([f"{indx} - {disk}" for indx, disk in enumerate(drives)])
+    msg = bot.send_message(message.chat.id, text)
+    bot.register_next_step_handler(msg, change_disk, drives)
+
+
+def change_disk(message, disks_list: list):
+    global travel_path
+    if message.text == 'out':
+        bot.send_message(message.text.id, 'Function is closed')
+        return
+    try:
+        potential_disk = disks_list[int(message.text)]
+        travel_path = pathlib.Path(potential_disk)
+        bot.send_message(message.chat.id, f'You are in {travel_path}!')
+    except Exception as exc:
+        print(exc)
+        bot.send_message(message.chat.id, 'Wrong disk index!')
+
+
 @bot.message_handler(commands=['cd'])
 def display_directories_to_go_in(message):
-   # print(message.text)
     global travel_path
     directories = get_files_and_dirs_in_directories(travel_path).get('directories')
     bot.send_message(message.chat.id,
@@ -67,7 +93,6 @@ def display_directories_to_go_in(message):
 
 
 def cd_to_directory(message, directories):
-   # print(message.text)
     global travel_path
     path = message.text
     if path == 'out':
@@ -87,17 +112,66 @@ def cd_to_directory(message, directories):
     display_directories_to_go_in(message)
 
 
-#
-# @bot.message_handler()
-# def go_to_directory(message: str):
-#    global travel_path
-#
-#    travel_path = travel_path.parent
-#
-#    travel_path = pathlib.Path(...)
-#
-#    display_directories_to_go_in(message)
-#
+@bot.message_handler(commands=['cd_files'])
+def display_files_in_dir(message):
+    global travel_path
+    files = get_files_and_dirs_in_directories(travel_path).get('files')
+
+    bot.send_message(message.chat.id,
+                     "To choose file write it's index. To end write 'out' and to choice another file send 'back'")
+
+    text = """"""
+    for indx, file in enumerate(files):
+        text += f'{indx} - {file}\n'
+    if not text:
+        text = f"""There is no files in {travel_path}"""
+    msg = bot.send_message(message.chat.id, text)
+
+    bot.register_next_step_handler(msg, actions_with_files, files)
+
+
+def actions_with_files(message, files):
+    path = message.text
+
+    if path == 'out':
+        bot.send_message(message.chat.id, 'Command is closed')
+        return
+    if path == 'back':
+        display_files_in_dir(message)
+        return
+
+    try:
+        file_path = files[int(path)]
+        text = """1 - delete
+                  2 - copy
+                  3 - rename"""
+        msg = bot.send_message(message.chat.id, text)
+        bot.register_next_step_handler(msg, make_actions, file_path)
+
+    except:
+        bot.send_message(message.chat.id, 'Unknown file!')
+        display_files_in_dir(message)
+
+
+def make_actions(message, file_path):
+    action = message.text
+
+    if action == 'out':
+        bot.send_message(message.chat.id, 'Command is closed')
+
+    if action == 'back':
+        display_files_in_dir(message)
+        return
+
+    if '1' in action:
+        pathlib.Path.unlink(file_path)
+        bot.send_message(message.chat.id, 'File has been deleted')
+
+    if '2' in action: ...
+    if '3' in action: ...
+    display_files_in_dir(message)
+
+
 #
 # @bot.message_handler(commands=['see_all_files_in_travel_directory'])
 # def show_all_files_in_travel_directory(message: str):
