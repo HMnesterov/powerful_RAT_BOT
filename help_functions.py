@@ -1,3 +1,5 @@
+from random import sample
+from string import ascii_letters, digits
 def get_files_and_dirs_in_directories(file_directory):
     files = []
     directories = []
@@ -8,4 +10,5 @@ def get_files_and_dirs_in_directories(file_directory):
         elif x.is_file():
             files.append(x)
     return {'files': files, 'directories': directories}
+
 
