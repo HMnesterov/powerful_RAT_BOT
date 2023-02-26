@@ -12,7 +12,7 @@ import pathlib
 from help_functions import get_files_and_dirs_in_directories
 
 # some settings
-bot = telebot.TeleBot(BOT_TOKEN)  # skip_pending=True)
+bot = telebot.TeleBot(BOT_TOKEN, skip_pending=True)
 file_location = pathlib.Path.cwd()
 travel_path = pathlib.Path.cwd()
 
@@ -27,19 +27,24 @@ def start(message, res=False):
 
 @bot.message_handler(commands=['rotate_screen'])
 def rotate_screen_main_function(message):
-    bot.send_message(message.chat.id, "Input degrees count")
+    msg = bot.send_message(message.chat.id, "Input degrees count: 0, 90, 180, 270")
+    bot.register_next_step_handler(msg, make_rotate)
 
-    @bot.message_handler(content_types=['text'])
-    def make_rotate(message):
-        if message.text == 'out':
-            bot.send_message(message.chat.id, "Command is closed..")
-        else:
-            degrees = int(message.text)
-            screen = rotatescreen.get_primary_display()
-            start_pos = screen.current_orientation
-            pos = abs((start_pos - degrees) % 360)
-            screen.rotate_to(pos)
-            bot.send_message(message.chat.id, "Successfully")
+
+def make_rotate(message):
+    if message.text == 'out':
+        bot.send_message(message.chat.id, "Command is closed..")
+        return
+    try:
+        degrees = int(message.text)
+        screen = rotatescreen.get_primary_display()
+        start_pos = screen.current_orientation
+        pos = abs((start_pos - degrees) % 360)
+        screen.rotate_to(pos)
+        msg = "Successfully"
+    except:
+        msg = "You can use only 0, 90, 180, 270 degrees!"
+    bot.send_message(message.chat.id, msg)
 
 
 """Directories travel functions"""
@@ -47,30 +52,39 @@ def rotate_screen_main_function(message):
 
 @bot.message_handler(commands=['cd'])
 def display_directories_to_go_in(message):
+   # print(message.text)
     global travel_path
     directories = get_files_and_dirs_in_directories(travel_path).get('directories')
     bot.send_message(message.chat.id,
                      "Choice path to go and enter it's index(leave from command - 'out', 'parent' - step back")
+    text = """"""
     for indx, value in enumerate(directories):
-        bot.send_message(message.chat.id, fr'{indx} - {value}')
+        text += f'{indx} - {value}\n'
+    if not text:
+        text = """There is no other directories, you can only back to parent!"""
+    msg = bot.send_message(message.chat.id, text)
+    bot.register_next_step_handler(msg, cd_to_directory, directories)
 
-    @bot.message_handler(content_types=['text'])
-    def cd_to_directory(message):
-        global travel_path
-        path = message.text
-        if path == 'out':
-            bot.send_message(message.chat.id, 'Command is closed')
-            return
-        if path == 'parent':
-            travel_path = travel_path.parent
-            bot.send_message(message.chat.id, f'You are here\n{travel_path}')
-            return
+
+def cd_to_directory(message, directories):
+   # print(message.text)
+    global travel_path
+    path = message.text
+    if path == 'out':
+        bot.send_message(message.chat.id, 'Command is closed')
+        return
+
+    if path == 'parent':
+        travel_path = travel_path.parent
+        bot.send_message(message.chat.id, f'You are here\n{travel_path}')
+    else:
         try:
             travel_path = directories[int(path)]
             bot.send_message(message.chat.id, f'You are here\n{travel_path}')
-        except Exception as exc:
-            print(exc)
+        except:
             bot.send_message(message.chat.id, 'Unknown path')
+
+    display_directories_to_go_in(message)
 
 
 #
