@@ -58,7 +58,8 @@ def try_to_change_a_disk_in_travel_path(message):
     if len(drives) < 2:
         bot.send_message(message.chat.id, "This computer has no more than 1 disk")
         return
-    text = 'Choose a disk(or use out to leave)\n' + '''\n'''.join([f"{indx} - {disk}" for indx, disk in enumerate(drives)])
+    text = 'Choose a disk(or use out to leave)\n' + '''\n'''.join(
+        [f"{indx} - {disk}" for indx, disk in enumerate(drives)])
     msg = bot.send_message(message.chat.id, text)
     bot.register_next_step_handler(msg, change_disk, drives)
 
@@ -72,8 +73,7 @@ def change_disk(message, disks_list: list):
         potential_disk = disks_list[int(message.text)]
         travel_path = pathlib.Path(potential_disk)
         bot.send_message(message.chat.id, f'You are in {travel_path}!')
-    except Exception as exc:
-        print(exc)
+    except Exception:
         bot.send_message(message.chat.id, 'Wrong disk index!')
 
 
@@ -172,13 +172,6 @@ def make_actions(message, file_path):
     display_files_in_dir(message)
 
 
-#
-# @bot.message_handler(commands=['see_all_files_in_travel_directory'])
-# def show_all_files_in_travel_directory(message: str):
-#    global travel_path
-#    data = get_files_and_dirs_in_directories(travel_path)
-#    files, dirs = data.get('files'), data.get('directories')
-#
 #
 # @bot.message_handler()
 # def remove_file(message: str):
