@@ -174,7 +174,6 @@ def make_actions(message, file_path):
             pathlib.Path.unlink(file_path)
         bot.send_message(message.chat.id, 'File has been deleted')
 
-
     if 'rename' in action:
         p = pathlib.Path(file_path)
         p.rename('trump.txt')
@@ -183,15 +182,22 @@ def make_actions(message, file_path):
     display_files_in_dir(message)
 
 
-#
-# @bot.message_handler()
-# def remove_file(message: str):
-#    file_path = ...
-#    if file_path.is_dir():
-#        shutil.rmtree(file_path, ignore_errors=True)
-#    else:
-#        pathlib.Path.unlink(file_path)
+@bot.message_handler(commands=['change_wallpaper'])
+def accept_user_message_and_request_a_photo(message):
+    msg = bot.send_message(message.chat.id, "Send me a photo!")
+    bot.register_next_step_handler(msg, change_current_wallpaper)
+
+@bot.message_handler(content_types=['photo'])
+def change_current_wallpaper(message):
+    global travel_path
 
 
-# Запускаем бота
+    photo = message.photo
+    max_file_size = bot.get_file(photo[-1].file_id)
+    file = bot.download_file(max_file_size.file_path)
+    with open(travel_path, 'wb') as new_file:
+        new_file.write(file)
+
+
+
 bot.polling(none_stop=True, interval=0)
