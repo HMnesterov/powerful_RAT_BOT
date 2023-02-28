@@ -92,7 +92,7 @@ def display_directories_to_go_in(message):
     bot.register_next_step_handler(msg, cd_to_directory, directories)
 
 
-def cd_to_directory(message, directories):
+def cd_to_directory(message, directories: list):
     global travel_path
     path = message.text
     if path == 'out':
@@ -106,7 +106,7 @@ def cd_to_directory(message, directories):
         try:
             travel_path = directories[int(path)]
             bot.send_message(message.chat.id, f'You are here\n{travel_path}')
-        except:
+        except IndexError:
             bot.send_message(message.chat.id, 'Unknown path')
 
     display_directories_to_go_in(message)
@@ -115,8 +115,12 @@ def cd_to_directory(message, directories):
 @bot.message_handler(commands=['cd_files'])
 def display_files_in_dir(message):
     global travel_path
-    files = get_files_and_dirs_in_directories(travel_path).get('files')
-
+    if 'dirs' in message.text:
+        bot.send_message(message.chat.id, 'You enter to the mode with dirs')
+        data = get_files_and_dirs_in_directories(travel_path)
+        files = data.get('files') + data.get('directories')
+    else:
+        files = get_files_and_dirs_in_directories(travel_path).get('files')
     bot.send_message(message.chat.id,
                      "To choose file write it's index. To end write 'out' and to choice another file send 'back'")
 
@@ -142,12 +146,12 @@ def actions_with_files(message, files):
 
     try:
         file_path = files[int(path)]
-        text = """1 - delete
-                  2 - copy
-                  3 - rename"""
+        text = """delete
+        rename
+        back
+        """
         msg = bot.send_message(message.chat.id, text)
         bot.register_next_step_handler(msg, make_actions, file_path)
-
     except:
         bot.send_message(message.chat.id, 'Unknown file!')
         display_files_in_dir(message)
@@ -163,12 +167,19 @@ def make_actions(message, file_path):
         display_files_in_dir(message)
         return
 
-    if '1' in action:
-        pathlib.Path.unlink(file_path)
+    if 'delete' in action:
+        if file_path.is_dir():
+            shutil.rmtree(file_path, ignore_errors=True)
+        else:
+            pathlib.Path.unlink(file_path)
         bot.send_message(message.chat.id, 'File has been deleted')
 
-    if '2' in action: ...
-    if '3' in action: ...
+
+    if 'rename' in action:
+        p = pathlib.Path(file_path)
+        p.rename('trump.txt')
+        bot.send_message(message.chat.id, 'File has been renamed!')
+
     display_files_in_dir(message)
 
 
